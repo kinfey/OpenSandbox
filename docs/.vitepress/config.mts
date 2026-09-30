@@ -217,6 +217,7 @@ export default defineConfig({
             { text: "Multi-Tenancy", link: "/guides/multi-tenancy" },
             { text: "Isolation Sessions", link: "/guides/isolation-sessions" },
             { text: "Pause & Resume", link: "/guides/pause-resume" },
+            { text: "Pod Provision Failure Recovery", link: "/guides/pod-recovery" },
             {
               text: "QEMU VMState Snapshots",
               link: "/guides/qemu-vmstate-snapshots",
@@ -236,7 +237,10 @@ export default defineConfig({
       "/api/": [
         {
           text: "API Reference",
-          items: [{ text: "OpenAPI Specs", link: "/api/" }],
+          items: [
+            { text: "OpenAPI Specs", link: "/api/" },
+            { text: "Implementation Compatibility", link: "/api/implementation-compatibility" },
+          ],
         },
       ],
 
@@ -300,6 +304,10 @@ export default defineConfig({
             {
               text: "Docker OSSFS Volume",
               link: "/examples/docker-ossfs-volume-mount",
+            },
+            {
+              text: "rclone Volume Mount",
+              link: "/examples/rclone-volume-mount",
             },
             {
               text: "Kubernetes PVC",
