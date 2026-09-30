@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata" // Embed timezone data for snapshot image naming.
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -223,6 +224,9 @@ func main() {
 	var snapshotRegistry string
 	flag.StringVar(&snapshotRegistry, "snapshot-registry", "", "OCI registry for snapshot images (e.g., registry.example.com/snapshots).")
 
+	var snapshotImageURITemplateValue string
+	flag.StringVar(&snapshotImageURITemplateValue, "snapshot-image-uri-template", "", "Go named-field template for snapshot image URIs; empty uses "+controller.DefaultSnapshotImageURITemplate+".")
+
 	var snapshotRegistryInsecure bool
 	flag.BoolVar(&snapshotRegistryInsecure, "snapshot-registry-insecure", false, "Use insecure registry mode when pushing snapshot images.")
 
@@ -256,6 +260,12 @@ func main() {
 	ctrl.SetLogger(logger)
 
 	setupLog.Info("Starting controller", "commitID", commitID, "buildDate", buildDate)
+
+	snapshotImageURITemplate, err := controller.ParseSnapshotImageURITemplate(snapshotImageURITemplateValue)
+	if err != nil {
+		setupLog.Error(err, "invalid snapshot image URI template")
+		os.Exit(1)
+	}
 
 	otelShutdown := setupTelemetry()
 
@@ -450,6 +460,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	featureConfig := controller.NewFeatureConfig()
+	if err := featureConfig.SetupWithManager(mgr, os.Getenv("POD_NAMESPACE")); err != nil {
+		setupLog.Error(err, "failed to setup feature config ConfigMap watch")
+		os.Exit(1)
+	}
+
 	poolAllocator := controller.NewDefaultAllocator(mgr.GetClient())
 	if err := controller.SetupCapacityMetricsWithManager(mgr, poolAllocator); err != nil {
 		setupLog.Error(err, "unable to register capacity metrics")
@@ -463,6 +479,7 @@ func main() {
 		ResumePullSecret:    resumePullSecret,
 		ProfileStore:        profileStore,
 		StatusRVExpectation: expectations.NewResourceVersionExpectation(),
+		FeatureConfig:       featureConfig,
 	}).SetupWithManager(mgr, batchSandboxConcurrency); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BatchSandbox")
 		os.Exit(1)
@@ -486,6 +503,7 @@ func main() {
 		ContainerdSocketPath:      containerdSocketPath,
 		CommitJobTimeout:          commitJobTimeout,
 		SnapshotRegistry:          snapshotRegistry,
+		SnapshotImageURITemplate:  snapshotImageURITemplate,
 		SnapshotRegistryInsecure:  snapshotRegistryInsecure,
 		SnapshotPushSecret:        snapshotPushSecret,
 		ImageCommitterPullSecret:  imageCommitterPullSecret,
